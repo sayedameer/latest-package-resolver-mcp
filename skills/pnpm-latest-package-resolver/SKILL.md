@@ -21,7 +21,10 @@ Run the MCP server directly via `pnpx`:
 pnpx @sayedameer/latest-package-resolver-mcp
 ```
 
-The server communicates via stdio using JSON-RPC. Send requests as JSON lines:
+The server communicates via stdio using JSON-RPC. Send requests as JSON lines.
+
+> ⚠️ **Timeout Warning**: API calls to the npm registry may take **5-10 seconds** depending on network conditions and the number of packages. Do not interrupt — wait for the JSON response.
+
 
 ### Example: resolve_packages
 

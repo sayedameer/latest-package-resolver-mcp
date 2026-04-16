@@ -128,26 +128,48 @@ export class Resolver {
 
     const result: Record<string, string> = {};
 
-    // First pass: resolve each package
-    for (const pkg of packages) {
+    // First pass: resolve all packages in parallel with loading indicator
+    console.error(`[resolver] Fetching metadata for ${packages.length} package(s)...`);
+    const startTime = Date.now();
+
+    const packagePromises = packages.map(async (pkg) => {
       const name = typeof pkg === 'string' ? pkg : pkg.name;
       const versionSpec = typeof pkg === 'string' ? undefined : pkg.version;
 
+      console.error(`[resolver] Fetching ${name}...`);
       const metadata = versionSpec
         ? await registry.getSpecificVersion(name, versionSpec)
         : await registry.getPackageMetadata(name);
 
       if (!metadata) {
-        this.conflicts.push({
-          package: name,
+        return {
+          name,
+          error: true,
           required: versionSpec || 'latest',
           conflicts: [{ from: 'resolution', required: 'package not found' }],
+        };
+      }
+
+      console.error(`[resolver] ✓ ${name}@${metadata.version}`);
+      return { name, metadata, version: metadata.version };
+    });
+
+    const resolved = await Promise.all(packagePromises);
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.error(`[resolver] Fetched ${resolved.filter(r => !r.error).length} package(s) in ${elapsed}s`);
+
+    // Process results
+    for (const item of resolved) {
+      if (item.error) {
+        this.conflicts.push({
+          package: item.name,
+          required: item.required || 'latest',
+          conflicts: item.conflicts || [],
         });
         continue;
       }
-
-      this.resolvedPackages.set(name, metadata);
-      result[name] = `^${metadata.version}`;
+      this.resolvedPackages.set(item.name, item.metadata!);
+      result[item.name] = `^${item.version}`;
     }
 
     // Second pass: check peer dependencies
@@ -242,12 +264,28 @@ export class Resolver {
       ...deps.peerDependencies,
     };
 
-    for (const [name, currentVersion] of Object.entries(allDeps)) {
-      const latest = await registry.getPackageMetadata(name);
-      if (!latest) continue;
+    const depEntries = Object.entries(allDeps);
+    console.error(`[resolver] Checking compatibility for ${depEntries.length} package(s)...`);
+    const startTime = Date.now();
 
-      // Check if outdated
-      const current = currentVersion.replace(/^[\^~>=<]+/, '');
+    // Fetch all metadata in parallel
+    const depPromises = depEntries.map(async ([name, currentVersion]) => {
+      console.error(`[resolver] Checking ${name}...`);
+      const latest = await registry.getPackageMetadata(name);
+      if (!latest) {
+        console.error(`[resolver] ⚠ ${name} not found`);
+        return null;
+      }
+      console.error(`[resolver] ✓ ${name}@${latest.version}`);
+      return { name, currentVersion, latest };
+    });
+
+    const depResults = (await Promise.all(depPromises)).filter((r): r is NonNullable<typeof r> => r !== null);
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.error(`[resolver] Checked ${depResults.length} package(s) in ${elapsed}s`);
+
+    // Process results
+    for (const { name, currentVersion, latest } of depResults) {
       const latestV = latest.version;
 
       if (!satisfiesRange(latestV, currentVersion)) {

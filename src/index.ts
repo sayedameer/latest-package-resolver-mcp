@@ -69,6 +69,7 @@ server.registerTool(
     inputSchema: GetLatestVersionSchema,
   },
   async (input) => {
+    console.error(`[get_latest_version] Fetching ${input.package}...`);
     const metadata = await registry.getPackageMetadata(input.package);
     if (!metadata) {
       return {
@@ -81,6 +82,7 @@ server.registerTool(
         isError: true,
       };
     }
+    console.error(`[get_latest_version] ✓ ${input.package}@${metadata.version}`);
     return {
       content: [
         {
