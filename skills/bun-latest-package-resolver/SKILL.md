@@ -44,23 +44,6 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_latest
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"check_compatibility","arguments":{"dependencies":{"next":"^14.0.0"},"node":"20.0.0"}}}' | bunx @sayedameer/latest-package-resolver-mcp
 ```
 
-### PowerShell
-
-In PowerShell, escape quotes properly:
-
-```powershell
-echo '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"resolve_packages\",\"arguments\":{\"packages\":[\"next\",\"react\"],\"node\":\">=20\"}}}' | bunx @sayedameer/latest-package-resolver-mcp
-```
-
-Or use here-strings for cleaner syntax:
-
-```powershell
-$json = @'
-{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"resolve_packages","arguments":{"packages":["next","react"],"node":">=20"}}}
-'@
-$json | bunx @sayedameer/latest-package-resolver-mcp
-```
-
 ---
 
 ## Available Tools
